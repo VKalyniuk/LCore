@@ -8,6 +8,7 @@ internal class SaySomethingCommandHandler : ICommandHandler<SaySomethingCommand>
 {
     public async Task Handle(SaySomethingCommand command, CancellationToken cancellationToken)
     {
+        Console.WriteLine($"Command : {command.GetType()} | Handler: {this.GetType()}");
         Console.WriteLine($"From Handler -> Something is '{command.Value}'");
     }
 }

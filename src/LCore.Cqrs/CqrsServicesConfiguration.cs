@@ -1,4 +1,5 @@
 ﻿using Lumini.Core.Cqrs.Decorators;
+using Lumini.Core.Cqrs.Notifications;
 using Lumini.Core.Cqrs.Requests;
 using Lumini.Core.Cqrs.Senders;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,37 +9,6 @@ namespace Lumini.Core.Cqrs;
 
 public static class CqrsServicesConfiguration
 {
-    public static IServiceCollection AddCqrsForAssembly(this IServiceCollection services, Assembly assembly)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(assembly);
-
-        services.AddCqrs();
-
-        var requestHandlerTypes = assembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract)
-            .SelectMany(t => t.GetInterfaces(), (t, i) => new { Type = t, Interface = i })
-            .Where(x => x.Interface.IsGenericType &&
-                        (x.Interface.GetGenericTypeDefinition() == typeof(IRequestHandler<>) ||
-                         x.Interface.GetGenericTypeDefinition() == typeof(IRequestHandler<,>)))
-            .ToList();
-
-        using var provider = services.BuildServiceProvider();
-        using var scope = provider.CreateScope();
-
-        foreach (var handler in requestHandlerTypes)
-        {
-            var iface = handler.Interface;
-            var openGeneric = iface.GetGenericTypeDefinition();
-            var args = iface.GetGenericArguments();
-            var serviceType = openGeneric.MakeGenericType(args);
-
-            services.AddScoped(serviceType, handler.Type);
-        }
-
-        return services;
-    }
-
     public static IServiceCollection AddCqrs(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -78,49 +48,75 @@ public static class CqrsServicesConfiguration
         return services;
     }
 
-    public static IServiceCollection AddDecoratorScoped<TDecorator>(this IServiceCollection services)
+    public static IServiceCollection AddDecorator(this IServiceCollection services, Type decoratorType)
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(services, "services");
+        ArgumentNullException.ThrowIfNull(decoratorType, "decoratorType");
 
-        services.AddDecoratorScoped(typeof(TDecorator));
-
-        return services;
-    }
-
-    public static IServiceCollection AddDecoratorScoped(this IServiceCollection services, Type decoratorType)
-    {
         services.AddScoped(typeof(IHandlerDecorator<,>), decoratorType);
 
         return services;
     }
-}
 
-public class CqrsConfiguration(IServiceCollection services)
-{
-    public CqrsConfiguration AddCqrsForAssembly(Assembly assembly)
+    public static IServiceCollection AddCqrsForAssembly(this IServiceCollection services, Assembly assembly)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(assembly);
 
-        services.AddCqrsForAssembly(assembly);
+        services.AddCqrs();
+        
+        AddRequestHandlersForAssembly(services, assembly);
+        AddNotificationHandlersForAssembly(services, assembly);
 
-        return this;
+        return services;
     }
 
-    public CqrsConfiguration AddDecorator(Type decoratorType)
+    private static IServiceCollection AddRequestHandlersForAssembly(IServiceCollection services, Assembly assembly)
     {
-        ArgumentNullException.ThrowIfNull(services);
+        var handlerGenerics = new[] { typeof(IRequestHandler<>), typeof(IRequestHandler<,>) };
+        AddHandlersForAssembly(services, assembly, handlerGenerics);
 
-        services.AddDecoratorScoped(decoratorType);
-
-        return this;
+        return services;
     }
 
-    public CqrsConfiguration AddDecorator<TDecorator>()
+    private static IServiceCollection AddNotificationHandlersForAssembly(IServiceCollection services, Assembly assembly)
     {
-        ArgumentNullException.ThrowIfNull(services);
+        var notitficationGenerics = new[] { typeof(INotificationHandler<>) };
+        AddHandlersForAssembly(services, assembly, notitficationGenerics);
 
-        services.AddDecoratorScoped(typeof(TDecorator));
+        return services;
+    }
 
-        return this;
+    private static IServiceCollection AddHandlersForAssembly(IServiceCollection services, Assembly assembly, Type[] generics)
+    {
+        var handlerTypes = GetTypes(assembly, generics);
+        foreach (var handler in handlerTypes)
+        {
+            var iface = handler.Interface;
+            var openGeneric = iface.GetGenericTypeDefinition();
+            var args = iface.GetGenericArguments();
+            var serviceType = openGeneric.MakeGenericType(args);
+
+            services.AddScoped(serviceType, handler.Type);
+        }
+
+        return services;
+    }
+
+    private static IEnumerable<TypeInterfacePair> GetTypes(Assembly assembly, Type[] generics)
+    {
+        var types = assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract)
+            .SelectMany(t => t.GetInterfaces(), (t, i) => new TypeInterfacePair { Type = t, Interface = i })
+            .Where(x => x.Interface.IsGenericType &&
+                        generics.Contains(x.Interface.GetGenericTypeDefinition()));
+
+        return types;
+    }
+
+    private class TypeInterfacePair
+    {
+        public Type Type { get; set; }
+        public Type Interface { get; set; }
     }
 }

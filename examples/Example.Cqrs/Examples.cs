@@ -1,4 +1,5 @@
 ﻿using Example.Cqrs.Commands;
+using Example.Cqrs.Notifications;
 using Example.Cqrs.Queries;
 using Lumini.Core.Cqrs.Senders;
 
@@ -17,6 +18,8 @@ internal class Examples(ISender sender)
         await RunExample(1, Example1);
         await RunExample(2, Example2);
         await RunExample(3, Example3);
+        await RunExample(4, Example4);
+        await RunExample(5, Example5);
     }
 
     private async Task RunExample(int number, Func<Task> task)
@@ -41,5 +44,15 @@ internal class Examples(ISender sender)
     private async Task Example3()
     {
         await sender.Send(new SaySomethingCommand("Hello from example 3"));
+    }
+
+    private async Task Example4()
+    {
+        await sender.Notify(new SomeWorkNotification { Message = "Hello from example 4" });
+    }
+
+    private async Task Example5()
+    {
+        await sender.Notify(new AnotherNotification { Message = "Hello from example 5" });
     }
 }

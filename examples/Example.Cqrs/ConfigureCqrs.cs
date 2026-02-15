@@ -55,9 +55,9 @@ public static class ConfigureCqrs
         services.AddHandler<DoSomethingCommand, DoSomethingCommandHandler>();
         services.AddHandler<SaySomethingCommand, SaySomethingCommandHandler>();
 
-        services.AddDecoratorScoped(typeof(ValidationDecorator<,>));
-        services.AddDecoratorScoped(typeof(QueryDecorator<,>));
-        services.AddDecoratorScoped(typeof(CommandDecorator<,>));
+        services.AddDecorator(typeof(ValidationDecorator<,>));
+        services.AddDecorator(typeof(QueryDecorator<,>));
+        services.AddDecorator(typeof(CommandDecorator<,>));
 
         return services;
     }
@@ -66,9 +66,9 @@ public static class ConfigureCqrs
     {
         services.AddCqrsForAssembly(typeof(Program).Assembly);
 
-        services.AddDecoratorScoped(typeof(ValidationDecorator<,>));
-        services.AddDecoratorScoped(typeof(QueryDecorator<,>));
-        services.AddDecoratorScoped(typeof(CommandDecorator<,>));
+        services.AddDecorator(typeof(ValidationDecorator<,>));
+        services.AddDecorator(typeof(QueryDecorator<,>));
+        services.AddDecorator(typeof(CommandDecorator<,>));
 
         return services;
     }
